@@ -682,6 +682,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ff25625a312a0f4ebd2da300351ca5e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_knockbackForce: {x: 0.1, y: 0.5}
 --- !u!1 &640908271
 GameObject:
   m_ObjectHideFlags: 0
@@ -858,7 +859,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_rendererTransform: {fileID: 679829339}
-  m_moveAccel: 20
+  m_moveAccel: 7
   m_groundFriction: 0.85
   m_gravity: -3
   m_jumpVel: 0.75
@@ -1016,8 +1017,9 @@ GameObject:
   m_Component:
   - component: {fileID: 773470831}
   - component: {fileID: 773470832}
+  - component: {fileID: 773470833}
   m_Layer: 6
-  m_Name: Square
+  m_Name: Renderer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1058,7 +1060,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 914a0809386234e4d801bb2f5d6a16b3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1090,6 +1092,22 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &773470833
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 773470830}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee158225ee1e59f4791627785501d950, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  shaderTypes: 0
+  normalStrength: 5
+  normalSmoothing: 1
+  computingNormal: 0
 --- !u!1 &791041580
 GameObject:
   m_ObjectHideFlags: 0

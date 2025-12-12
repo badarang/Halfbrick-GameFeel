@@ -20,6 +20,8 @@ public class Player : MonoSingleton<Player>
     
     private Rigidbody2D m_rigidBody = null;
     private BoxCollider2D m_collider = null; 
+    private PlayerRender m_playerRender = null; 
+
     private bool m_jumpPressed = false;
     private bool m_jumpHeld = false;
     private bool m_wantsRight = false;
@@ -65,6 +67,10 @@ public class Player : MonoSingleton<Player>
         {
             Debug.LogError("Renderer Transform is not assigned in the Player script!", this);
             m_rendererTransform = transform;
+        }
+        else
+        {
+            m_playerRender = m_rendererTransform.GetComponent<PlayerRender>();
         }
 
         if (Camera.main != null)
@@ -123,8 +129,28 @@ public class Player : MonoSingleton<Player>
         m_hasWeapon = true;
     }
 
+    public Vector2 GetVelocity()
+    {
+        return m_vel;
+    }
+
+    public void TakeDamage(Vector2 knockbackForce)
+    {
+        m_vel = knockbackForce;
+        m_state = State.Falling;
+        m_isMoving = false;
+        m_rigidBody.isKinematic = false;
+        
+        if (m_playerRender != null)
+        {
+            StartCoroutine(m_playerRender.ApplyHitFlashEffectRoutine(0.5f));
+        }
+    }
+
     void Idle()
     {
+        if (m_rigidBody.isKinematic) m_rigidBody.isKinematic = false;
+
         m_vel = Vector2.zero;
         m_isMoving = false;
         if (m_groundObjects.Count == 0)
@@ -149,6 +175,8 @@ public class Player : MonoSingleton<Player>
 
     void Falling()
     {
+        if (m_rigidBody.isKinematic) m_rigidBody.isKinematic = false;
+
         m_vel.y += m_gravity * Time.fixedDeltaTime;
         m_vel.y *= m_airFallFriction;
         
@@ -172,6 +200,8 @@ public class Player : MonoSingleton<Player>
 
     void Jumping()
     {
+        if (m_rigidBody.isKinematic) m_rigidBody.isKinematic = false;
+
         m_stateTimer += Time.fixedDeltaTime;
 
         if (m_stateTimer < m_jumpMinTime || (m_jumpHeld && m_stateTimer < m_jumpMaxTime))
@@ -206,6 +236,7 @@ public class Player : MonoSingleton<Player>
 
     void Walking()
     {
+        // 1. Handle ongoing movement
         if (m_isMoving)
         {
             m_moveTimer += Time.fixedDeltaTime;
@@ -249,75 +280,33 @@ public class Player : MonoSingleton<Player>
                 m_rigidBody.velocity = Vector2.zero;
 
                 StartCoroutine(CameraShakeRoutine(0.1f, 0.15f));
-            }
-            
-            return;
-        }
-        else
-        {
-            if (m_wantsLeft || m_wantsRight)
-            {
-                m_playerSize = m_collider != null ? m_collider.size.x * transform.localScale.x : 0.5f;
-                
-                bool checkRight = !m_wantsLeft; 
-                Vector2 direction = checkRight ? Vector2.right : Vector2.left;
-                
+
+                // Check for ground immediately after movement finishes
                 Vector2 origin = transform.position;
-                Vector2 size = m_collider != null ? m_collider.size * (Vector2)transform.localScale : new Vector2(0.5f, 0.5f);
-                size *= 0.95f; 
+                Vector2 size = new Vector2(m_playerSize * 0.9f, 0.05f); 
+                float distance = m_playerSize * 0.6f; 
                 
-                float maxDistance = m_playerSize; 
+                RaycastHit2D hit = Physics2D.BoxCast(origin, size, 0, Vector2.down, distance);
                 
-                RaycastHit2D[] hits = Physics2D.BoxCastAll(origin, size, 0, direction, maxDistance);
-                
-                float actualDistance = maxDistance;
-                
-                foreach (var hit in hits)
+                bool hasGround = false;
+                if (hit.collider != null && !hit.collider.isTrigger && hit.collider.gameObject != gameObject)
                 {
-                    if (hit.collider.gameObject != gameObject && !hit.collider.isTrigger)
-                    {
-                        if (hit.distance < actualDistance)
-                        {
-                            actualDistance = hit.distance;
-                        }
-                    }
+                    hasGround = true;
                 }
-                
-                if (actualDistance < 0.05f)
+
+                if (!hasGround)
                 {
+                    m_state = State.Falling;
                     return;
                 }
-                
-                m_currentMoveDistance = actualDistance;
-                m_targetRotationAngle = 90.0f * (m_currentMoveDistance / m_playerSize);
-
-                m_isMoving = true;
-                m_moveTimer = 0.0f;
-                m_walkStartPosition = m_rigidBody.transform.position;
-                m_startRotation = m_rendererTransform.rotation;
-                m_movingRight = checkRight; 
-
-                m_rigidBody.isKinematic = true;
-                m_rigidBody.velocity = Vector2.zero;
             }
             else
             {
-                m_state = State.Idle;
-                m_vel.x = 0;
                 return;
             }
         }
 
-        m_vel.y = 0;
-
-        if (m_groundObjects.Count == 0)
-        {
-            m_state = State.Falling;
-            m_isMoving = false;
-            m_rigidBody.isKinematic = false; 
-            return;
-        }
-
+        // 2. Check for Jump (Priority over walking)
         if (m_jumpPressed || m_jumpHeld)
         {
             m_stateTimer = 0;
@@ -326,6 +315,67 @@ public class Player : MonoSingleton<Player>
             m_rigidBody.isKinematic = false; 
             m_vel.x = 0;
             return;
+        }
+
+        // 3. Check for Ground (Fall if no ground)
+        if (!m_isMoving && m_groundObjects.Count == 0)
+        {
+            m_state = State.Falling;
+            m_isMoving = false;
+            m_rigidBody.isKinematic = false; 
+            return;
+        }
+
+        // 4. Start new movement
+        if (m_wantsLeft || m_wantsRight)
+        {
+            m_playerSize = m_collider != null ? m_collider.size.x * transform.localScale.x : 0.5f;
+            
+            bool checkRight = !m_wantsLeft; 
+            Vector2 direction = checkRight ? Vector2.right : Vector2.left;
+            
+            Vector2 originCast = transform.position;
+            Vector2 sizeCast = m_collider != null ? m_collider.size * (Vector2)transform.localScale : new Vector2(0.5f, 0.5f);
+            sizeCast *= 0.95f; 
+            
+            float maxDistance = m_playerSize; 
+            
+            RaycastHit2D[] hits = Physics2D.BoxCastAll(originCast, sizeCast, 0, direction, maxDistance);
+            
+            float actualDistance = maxDistance;
+            
+            foreach (var h in hits)
+            {
+                if (h.collider.gameObject != gameObject && !h.collider.isTrigger)
+                {
+                    if (h.distance < actualDistance)
+                    {
+                        actualDistance = h.distance;
+                    }
+                }
+            }
+            
+            if (actualDistance < 0.05f)
+            {
+                return;
+            }
+            
+            m_currentMoveDistance = actualDistance;
+            m_targetRotationAngle = 90.0f * (m_currentMoveDistance / m_playerSize);
+
+            m_isMoving = true;
+            m_moveTimer = 0.0f;
+            m_walkStartPosition = m_rigidBody.transform.position;
+            m_startRotation = m_rendererTransform.rotation;
+            m_movingRight = checkRight; 
+
+            m_rigidBody.isKinematic = true;
+            m_rigidBody.velocity = Vector2.zero;
+        }
+        else
+        {
+            m_state = State.Idle;
+            m_vel.x = 0;
         }
     }
 
@@ -358,6 +408,8 @@ public class Player : MonoSingleton<Player>
 
     private void OnCollisionExit2D(Collision2D collision)
     {
+        if (m_isMoving) return;
+
         m_groundObjects.Remove(collision.gameObject);
     }
 
