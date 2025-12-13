@@ -17,7 +17,7 @@ public class Spikes : MonoBehaviour {
     [Header("Damage Settings")]
     [SerializeField] private Vector2 m_knockbackForce = new Vector2(0.1f, 0.5f);
     [SerializeField] private KnockbackDirection m_knockbackDirection = KnockbackDirection.Left;
-    [SerializeField] private float m_hitStopDuration = 0.1f; 
+    [SerializeField] private float m_hitStopDuration = 0.05f; 
 
     void Start()
     {
@@ -43,7 +43,6 @@ public class Spikes : MonoBehaviour {
                 StopCoroutine(m_damageCoroutine);
                 m_damageCoroutine = null;
             }
-            // Ensure color is reset if player leaves quickly
             m_sprite.color = m_defaultColor;
         }
     }
@@ -57,20 +56,18 @@ public class Spikes : MonoBehaviour {
                 float directionX = (m_knockbackDirection == KnockbackDirection.Right) ? 1f : -1f;
                 Vector2 finalKnockback = new Vector2(directionX * m_knockbackForce.x, m_knockbackForce.y);
                 
-                // Try to deal damage
                 if (player.TakeDamage(finalKnockback))
                 {
-                    // Apply Juice Effects
+                    QuestManager.Instance.CompleteQuest("touch_spikes");
+                    
                     CameraController.Instance.Shake(0.2f, 0.5f);
                     
-                    // Change color and stop time
-                    m_sprite.color = Color.white;
+                    m_sprite.color = Color.red;
                     yield return StartCoroutine(HitStopRoutine());
-                    m_sprite.color = m_defaultColor; // Reset color after hit stop
+                    m_sprite.color = m_defaultColor;
                 }
             }
             
-            // Check frequently enough to catch the end of invincibility
             yield return new WaitForSeconds(0.1f);
         }
     }

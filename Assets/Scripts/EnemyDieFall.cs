@@ -31,7 +31,7 @@ public class EnemyDieFall : MonoBehaviour
         
         // Rotate in the direction of movement
         float rotationDirection = isPlayerLeft ? -1f : 1f;
-        transform.DORotate(new Vector3(0, 0, 360 * rotationDirection), 0.5f, RotateMode.FastBeyond360)
+        transform.DORotate(new Vector3(0, 0, m_rotationSpeed * rotationDirection), 0.5f, RotateMode.FastBeyond360)
             .SetLoops(-1, LoopType.Incremental)
             .SetEase(Ease.Linear);
     }

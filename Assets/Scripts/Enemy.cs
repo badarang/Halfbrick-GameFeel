@@ -23,6 +23,7 @@ public class Enemy : MonoBehaviour
     public GameObject m_enemyDieFallPrefab; 
 
     public Player m_player = null;
+    private EnemySpawner m_spawner;
 
     private Rigidbody2D m_rigidBody = null;
     private UnitRenderer m_unitRenderer = null;
@@ -60,6 +61,11 @@ public class Enemy : MonoBehaviour
         m_unitRenderer = GetComponentInChildren<UnitRenderer>();
         m_spriteRenderer = GetComponentInChildren<SpriteRenderer>(); 
         m_originalScale = transform.localScale;
+    }
+
+    public void SetSpawner(EnemySpawner spawner)
+    {
+        m_spawner = spawner;
     }
 
     void FixedUpdate()
@@ -148,6 +154,11 @@ public class Enemy : MonoBehaviour
 
     private void Die()
     {
+        if (m_spawner != null)
+        {
+            m_spawner.OnEnemyDied();
+        }
+
         if (m_enemyDieFallPrefab != null)
         {
             bool isPlayerLeft = m_player.transform.position.x < transform.position.x;
@@ -260,8 +271,16 @@ public class Enemy : MonoBehaviour
 
             if (contact.normal.y < -0.5f) 
             {
-                float damage = player.IsGroundPounding() ? m_groundPoundDamage : m_stompDamage;
-                InflictDamage(damage);
+                if (player.IsGroundPounding())
+                {
+                    QuestManager.Instance.CompleteQuest("ground_pound_enemy");
+                    InflictDamage(m_groundPoundDamage);
+                }
+                else
+                {
+                    QuestManager.Instance.CompleteQuest("stomp_enemy");
+                    InflictDamage(m_stompDamage);
+                }
                 player.Bounce(new Vector2(player.GetVelocity().x, m_playerBounceForce));
             }
             else 
@@ -296,7 +315,10 @@ public class Enemy : MonoBehaviour
             {
                 float knockbackDirectionX = (player.transform.position.x > transform.position.x) ? 1 : -1;
                 Vector2 finalKnockback = new Vector2(knockbackDirectionX * m_knockbackForce.x, m_knockbackForce.y);
-                player.TakeDamage(finalKnockback);
+                if(player.TakeDamage(finalKnockback))
+                {
+                    QuestManager.Instance.CompleteQuest("hit_by_enemy");
+                }
             }
             yield return new WaitForSeconds(0.1f);
         }

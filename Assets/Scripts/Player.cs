@@ -10,6 +10,7 @@ public class Player : MonoSingleton<Player>
 {
     public Transform m_rendererTransform;
 
+    [Header("Movement")]
     public float m_moveAccel = (0.03f * 60.0f);
     public float m_groundFriction = 0.85f;
     public float m_gravity = (-0.15f * 60.0f); 
@@ -20,8 +21,15 @@ public class Player : MonoSingleton<Player>
     public float m_airMoveFriction = 0.85f;
     public float m_groundPoundSpeed = 20.0f;
     public float m_groundPoundPrepareTime = 0.5f; // Duration of the spin
-    public float m_invincibilityDuration = 2.0f;
     
+    [Header("Combat")]
+    public float m_invincibilityDuration = 2.0f;
+    public float m_weaponRecoilForce = 2.0f;
+    public float m_recoilDuration = 0.1f; // Duration to disable input after shooting
+
+    [Header("Collision")]
+    public LayerMask m_obstacleLayerMask; // Layer mask for obstacle detection
+
     private Rigidbody2D m_rigidBody = null;
     private BoxCollider2D m_collider = null; 
     private UnitRenderer m_unitRenderer = null; 
@@ -54,6 +62,7 @@ public class Player : MonoSingleton<Player>
     private bool isFacingRight = true;
     
     private bool m_wasGroundPounding = false;
+    private float m_recoilTimer = 0.0f;
 
     private enum State
     {
@@ -90,18 +99,47 @@ public class Player : MonoSingleton<Player>
 
         if (m_shootPressed && m_hasWeapon)
         {
+            // Fire Bullet
             GameObject projectileGO = ObjectPooler.Instance.GetObject("Bullet");
             if (projectileGO)
             {
                 Vector3 firePos = (m_weapon != null) ? m_weapon.GetFirePosition() : transform.position;
                 projectileGO.GetComponent<Bullet>().Fire(firePos, m_fireRight);
+                QuestManager.Instance.CompleteQuest("shoot_enemy");
             }
+
+            // Apply Recoil & Effects
+            if (m_weapon != null)
+            {
+                m_weapon.Fire();
+            }
+            
+            // Player knockback
+            m_vel.x += isFacingRight ? -m_weaponRecoilForce : m_weaponRecoilForce;
+            m_recoilTimer = m_recoilDuration; // Set recoil timer
+
+            // If on ground and moving, interrupt movement to apply recoil
+            if (m_state == State.Walking && m_isMoving)
+            {
+                m_isMoving = false;
+                m_rigidBody.isKinematic = false;
+            }
+
+            // Camera effects
+            Vector2 shakeDirection = isFacingRight ? Vector2.left : Vector2.right;
+            CameraController.Instance.Shake(shakeDirection, 0.1f, 0.3f);
+            CameraController.Instance.Punch(2f, 0.2f);
         }
     }
 
     void FixedUpdate()
     {
         m_wasGroundPounding = (m_state == State.GroundPoundFall);
+
+        if (m_recoilTimer > 0)
+        {
+            m_recoilTimer -= Time.fixedDeltaTime;
+        }
 
         switch (m_state)
         {
@@ -212,9 +250,22 @@ public class Player : MonoSingleton<Player>
     {
         if (m_rigidBody.isKinematic) m_rigidBody.isKinematic = false;
 
+        // If recoiling, apply friction and slide
+        if (m_recoilTimer > 0)
+        {
+            if (!IsGrounded())
+            {
+                m_state = State.Falling;
+                return;
+            }
+            m_vel.x *= m_groundFriction;
+            ApplyVelocity();
+            return;
+        }
+
         m_vel = Vector2.zero;
         m_isMoving = false;
-        if (m_groundObjects.Count == 0)
+        if (!IsGrounded())
         {
             m_state = State.Falling;
             return;
@@ -232,6 +283,20 @@ public class Player : MonoSingleton<Player>
             m_state = State.Walking;
             return;
         }
+    }
+    
+    private bool IsGrounded()
+    {
+        for (int i = m_groundObjects.Count - 1; i >= 0; i--)
+        {
+            if (m_groundObjects[i] == null || !m_groundObjects[i].activeInHierarchy)
+            {
+                m_groundObjects.RemoveAt(i);
+                continue;
+            }
+            return true;
+        }
+        return false;
     }
 
     void Falling()
@@ -342,6 +407,20 @@ public class Player : MonoSingleton<Player>
 
     void Walking()
     {
+        if (m_recoilTimer > 0)
+        {
+            if (!IsGrounded())
+            {
+                m_state = State.Falling;
+                return;
+            }
+            m_isMoving = false;
+            m_rigidBody.isKinematic = false;
+            m_vel.x *= m_groundFriction;
+            ApplyVelocity();
+            return;
+        }
+
         if (m_isMoving)
         {
             m_moveTimer += Time.fixedDeltaTime;
@@ -386,19 +465,7 @@ public class Player : MonoSingleton<Player>
 
                 CameraController.Instance.Shake(0.1f, 0.15f);
 
-                Vector2 origin = transform.position;
-                Vector2 size = new Vector2(m_playerSize * 0.9f, 0.05f); 
-                float distance = m_playerSize * 0.6f; 
-                
-                RaycastHit2D hit = Physics2D.BoxCast(origin, size, 0, Vector2.down, distance);
-                
-                bool hasGround = false;
-                if (hit.collider != null && !hit.collider.isTrigger && hit.collider.gameObject != gameObject)
-                {
-                    hasGround = true;
-                }
-
-                if (!hasGround)
+                if (!IsGrounded())
                 {
                     m_state = State.Falling;
                     return;
@@ -420,7 +487,7 @@ public class Player : MonoSingleton<Player>
             return;
         }
 
-        if (!m_isMoving && m_groundObjects.Count == 0)
+        if (!m_isMoving && !IsGrounded())
         {
             m_state = State.Falling;
             m_isMoving = false;
@@ -441,7 +508,7 @@ public class Player : MonoSingleton<Player>
             
             float maxDistance = m_playerSize; 
             
-            RaycastHit2D[] hits = Physics2D.BoxCastAll(originCast, sizeCast, 0, direction, maxDistance);
+            RaycastHit2D[] hits = Physics2D.BoxCastAll(originCast, sizeCast, 0, direction, maxDistance, m_obstacleLayerMask);
             
             float actualDistance = maxDistance;
             

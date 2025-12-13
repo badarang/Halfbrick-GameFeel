@@ -5,8 +5,6 @@ using DG.Tweening;
 
 public class WeaponPickup : MonoBehaviour
 {
-    [SerializeField] private float m_animationDuration = 0.5f;
-
     private bool m_isCollected = false;
 
     private void OnTriggerEnter2D(Collider2D collision)
@@ -18,25 +16,24 @@ public class WeaponPickup : MonoBehaviour
             m_isCollected = true;
             Player player = collision.GetComponent<Player>();
             
-            // Find and activate the weapon on the player
-            Weapon weapon = player.GetComponentInChildren<Weapon>(true); // true to include inactive
-            if (weapon != null)
-            {
-                weapon.gameObject.SetActive(true);
-            }
-
-            // Call original function
+            // Give weapon to player
             player.GiveWeapon();
 
-            // Rewarding animation
-            transform.DOKill();
+            // Disable collider to prevent re-triggering
+            GetComponent<Collider2D>().enabled = false;
+
+            // Rewarding animation sequence
             Sequence sequence = DOTween.Sequence();
-            sequence.Append(transform.DOMove(player.transform.position, m_animationDuration).SetEase(Ease.InBack))
-                    .Join(transform.DOScale(Vector3.zero, m_animationDuration).SetEase(Ease.InBack))
-                    .OnComplete(() => {
-                        // Optional: Add particle effect or sound here
-                        Destroy(gameObject);
-                    });
+            
+            sequence.Append(transform.DOMoveY(transform.position.y + 2f, 0.7f).SetEase(Ease.OutQuad));
+            sequence.Join(transform.DOScale(1.2f, 0.7f).SetEase(Ease.OutQuad));
+            sequence.Join(transform.DORotate(new Vector3(0, 720, 0), 0.7f, RotateMode.FastBeyond360).SetEase(Ease.Linear));
+            
+            sequence.Append(transform.DOScale(0f, 0.2f).SetEase(Ease.InBack));
+
+            sequence.OnComplete(() => {
+                Destroy(gameObject);
+            });
         }
     }
 }
