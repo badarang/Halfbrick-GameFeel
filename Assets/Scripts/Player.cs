@@ -145,9 +145,9 @@ public class Player : MonoSingleton<Player>
         return m_vel;
     }
 
-    public void TakeDamage(Vector2 knockbackForce)
+    public bool TakeDamage(Vector2 knockbackForce)
     {
-        if (m_isInvincible) return;
+        if (m_isInvincible) return false;
 
         m_vel = knockbackForce;
         m_state = State.Falling;
@@ -162,6 +162,7 @@ public class Player : MonoSingleton<Player>
         }
         
         StartCoroutine(InvincibilityRoutine());
+        return true;
     }
 
     private IEnumerator InvincibilityRoutine()
