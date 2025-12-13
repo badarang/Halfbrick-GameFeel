@@ -141,7 +141,25 @@ public class Player : MonoSingleton<Player>
         m_isMoving = false;
         m_rigidBody.isKinematic = false;
         
-        StartCoroutine(m_playerRender.ApplyHitFlashEffectRoutine(0.5f));
+        if (m_playerRender != null)
+        {
+            StartCoroutine(m_playerRender.ApplyHitFlashEffectRoutine(0.5f));
+        }
+    }
+
+    // New method for bouncing without damage effects
+    public void Bounce(Vector2 bounceForce)
+    {
+        m_vel = bounceForce;
+        m_state = State.Falling; // Or Jumping, but Falling works for air movement
+        m_isMoving = false;
+        m_rigidBody.isKinematic = false;
+        
+        // No hit flash effect here
+        if (m_playerRender != null)
+        {
+            StartCoroutine(m_playerRender.ApplyBounceEffectRoutine(0.5f));
+        }
     }
 
     void Idle()
@@ -415,11 +433,14 @@ public class Player : MonoSingleton<Player>
         if (m_isMoving) return;
 
         m_groundObjects.Remove(collision.gameObject);
-        
-        // Removed manual position adjustment logic to let Physics engine handle contact resolution
-        
+        Vector3 pos = m_rigidBody.transform.position;
+
         foreach (ContactPoint2D contact in collision.contacts)
         {
+            Vector2 impulse = contact.normal * (contact.normalImpulse / Time.fixedDeltaTime);
+            pos.x += impulse.x;
+            pos.y += impulse.y;
+
             if (Mathf.Abs(contact.normal.y) > Mathf.Abs(contact.normal.x))
             {
                 if (contact.normal.y > 0)

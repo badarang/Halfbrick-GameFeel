@@ -41,13 +41,40 @@ public class PlayerRender : MonoBehaviour
         }
     }
 
+    // New routine for bounce effect (positive feedback)
+    public IEnumerator ApplyBounceEffectRoutine(float duration)
+    {
+        float flashSpeed = 0.1f;
+        int flashes = (int)(duration / (flashSpeed * 2));
+        
+        for (int i = 0; i < flashes; i++)
+        {
+            ApplyFlashColor(Color.yellow); // Use yellow for positive feedback
+            yield return new WaitForSeconds(flashSpeed);
+            
+            // Reset effect
+            if (_sprite.material != null && _sprite.material.HasProperty("_HitEffectBlend"))
+            {
+                _sprite.material.SetFloat("_HitEffectBlend", 0f);
+            }
+            yield return new WaitForSeconds(flashSpeed);
+        }
+
+        // Ensure reset at the end
+        _sprite.color = Color.white;
+        if (_sprite.material != null && _sprite.material.HasProperty("_HitEffectBlend"))
+        {
+            _sprite.material.SetFloat("_HitEffectBlend", 0f);
+        }
+    }
+
     private void ApplyFlashColor(Color color)
     {
         if (_sprite.material != null && _sprite.material.HasProperty("_HitEffectColor") &&
             _sprite.material.HasProperty("_HitEffectBlend"))
         {
             _sprite.material.SetColor("_HitEffectColor", color);
-            _sprite.material.SetFloat("_HitEffectBlend", .5f);
+            _sprite.material.SetFloat("_HitEffectBlend", .5f); // Blend factor
         }
     }
 }
