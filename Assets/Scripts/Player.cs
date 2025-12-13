@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UIElements;
 using static UnityEngine.GraphicsBuffer;
+using DG.Tweening; // Added for DoTween
 
 public class Player : MonoSingleton<Player>
 {
@@ -17,16 +18,19 @@ public class Player : MonoSingleton<Player>
     public float m_jumpMaxTime = 0.20f;
     public float m_airFallFriction = 0.975f;
     public float m_airMoveFriction = 0.85f;
+    public float m_groundPoundSpeed = 20.0f;
+    public float m_groundPoundPrepareTime = 0.5f; // Duration of the spin
     
     private Rigidbody2D m_rigidBody = null;
     private BoxCollider2D m_collider = null; 
-    private PlayerRender m_playerRender = null; 
+    private UnitRenderer m_unitRenderer = null; 
 
     private bool m_jumpPressed = false;
     private bool m_jumpHeld = false;
     private bool m_wantsRight = false;
     private bool m_wantsLeft = false;
     private bool m_shootPressed = false;
+    private bool m_groundPoundPressed = false;
     private bool m_fireRight = true;
     private bool m_hasWeapon = false;
     private float m_stateTimer = 0.0f;
@@ -44,13 +48,16 @@ public class Player : MonoSingleton<Player>
     private float m_currentMoveDistance = 0.5f;
     private float m_targetRotationAngle = 90.0f;
     private float m_playerSize = 0.5f;
+    private bool isFacingRight = true;
 
     private enum State
     {
         Idle = 0,
         Falling,
         Jumping,
-        Walking
+        Walking,
+        GroundPoundPrepare, // New state for spin
+        GroundPoundFall     // Renamed from GroundPounding
     };
 
     private State m_state = State.Idle;
@@ -67,7 +74,7 @@ public class Player : MonoSingleton<Player>
         }
         else
         {
-            m_playerRender = m_rendererTransform.GetComponent<PlayerRender>();
+            m_unitRenderer = m_rendererTransform.GetComponent<UnitRenderer>();
         }
     }
 
@@ -101,6 +108,12 @@ public class Player : MonoSingleton<Player>
             case State.Walking:
                 Walking();
                 break;
+            case State.GroundPoundPrepare:
+                GroundPoundPrepare();
+                break;
+            case State.GroundPoundFall:
+                GroundPoundFall();
+                break;
             default:
                 break;
         }
@@ -113,6 +126,11 @@ public class Player : MonoSingleton<Player>
         {
             m_fireRight = false;
         }
+    }
+
+    public bool IsGroundPounding()
+    {
+        return m_state == State.GroundPoundFall;
     }
 
     public void GiveWeapon()
@@ -132,18 +150,24 @@ public class Player : MonoSingleton<Player>
         m_isMoving = false;
         m_rigidBody.isKinematic = false;
         
-        if (m_playerRender != null)
+        // Cancel any tweens if interrupted
+        m_rendererTransform.DOKill();
+        
+        if (m_unitRenderer != null)
         {
-            StartCoroutine(m_playerRender.ApplyHitFlashEffectRoutine(0.5f));
+            StartCoroutine(m_unitRenderer.ApplyHitFlashEffectRoutine(0.5f));
         }
     }
 
     public void Bounce(Vector2 bounceForce)
     {
         m_vel = bounceForce;
-        m_state = State.Falling; 
+        m_state = State.Jumping; 
         m_isMoving = false;
         m_rigidBody.isKinematic = false;
+        
+        // Cancel any tweens if interrupted
+        m_rendererTransform.DOKill();
     }
 
     void Idle()
@@ -176,6 +200,13 @@ public class Player : MonoSingleton<Player>
     {
         if (m_rigidBody.isKinematic) m_rigidBody.isKinematic = false;
 
+        if (m_groundPoundPressed)
+        {
+            StartGroundPound();
+            m_groundPoundPressed = false; 
+            return;
+        }
+
         m_vel.y += m_gravity * Time.fixedDeltaTime;
         m_vel.y *= m_airFallFriction;
         
@@ -200,6 +231,13 @@ public class Player : MonoSingleton<Player>
     void Jumping()
     {
         if (m_rigidBody.isKinematic) m_rigidBody.isKinematic = false;
+
+        if (m_groundPoundPressed)
+        {
+            StartGroundPound();
+            m_groundPoundPressed = false; 
+            return;
+        }
 
         m_stateTimer += Time.fixedDeltaTime;
 
@@ -230,6 +268,37 @@ public class Player : MonoSingleton<Player>
 
         m_vel.x *= m_airMoveFriction;
 
+        ApplyVelocity();
+    }
+
+    void StartGroundPound()
+    {
+        m_state = State.GroundPoundPrepare;
+        m_stateTimer = 0.0f;
+        m_vel = Vector2.zero; // Stop movement
+        m_rigidBody.velocity = Vector2.zero;
+        m_rigidBody.isKinematic = true; // Disable physics/gravity
+
+        // Spin animation
+        Vector3 rotationAxis = new Vector3(0, 0, isFacingRight ? -360 : 360);
+        m_rendererTransform.DORotate(rotationAxis, m_groundPoundPrepareTime, RotateMode.LocalAxisAdd)
+            .SetEase(Ease.OutQuad);
+    }
+
+    void GroundPoundPrepare()
+    {
+        m_stateTimer += Time.fixedDeltaTime;
+        if (m_stateTimer >= m_groundPoundPrepareTime)
+        {
+            m_state = State.GroundPoundFall;
+            m_rigidBody.isKinematic = false; // Re-enable physics for collision
+        }
+    }
+
+    void GroundPoundFall()
+    {
+        m_vel.x = 0;
+        m_vel.y = -m_groundPoundSpeed;
         ApplyVelocity();
     }
 
@@ -385,9 +454,28 @@ public class Player : MonoSingleton<Player>
     {
         m_wantsLeft = Input.GetKey(KeyCode.LeftArrow);
         m_wantsRight = Input.GetKey(KeyCode.RightArrow);
+
+        if (m_wantsLeft)
+        {
+            isFacingRight = false;
+        }
+        else if (m_wantsRight)
+        {
+            isFacingRight = true;
+        }
+
         m_jumpPressed = Input.GetKeyDown(KeyCode.UpArrow);
         m_jumpHeld = Input.GetKey(KeyCode.UpArrow);
         m_shootPressed = Input.GetKeyDown(KeyCode.Space);
+        
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            // Only set the flag if the player is in the air
+            if (m_state == State.Falling || m_state == State.Jumping)
+            {
+                m_groundPoundPressed = true;
+            }
+        }
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -423,11 +511,33 @@ public class Player : MonoSingleton<Player>
                     {
                         m_groundObjects.Add(contact.collider.gameObject);
                     }
-                    if (m_state == State.Falling)
+                    if (m_state == State.Falling || m_state == State.GroundPoundFall)
                     {
-                        m_rendererTransform.rotation = Quaternion.identity;
+                        if (m_state == State.GroundPoundFall)
+                        {
+                             CameraController.Instance.Shake(0.3f, 0.8f);
+                             
+                            m_rendererTransform.DOKill();
+                            m_rendererTransform.localScale = Vector3.one;
+                            m_rendererTransform.localPosition = Vector3.zero;
 
-                        CameraController.Instance.Shake(0.2f, 0.5f);
+                            float squashYScale = 0.5f;
+                            float stretchXScale = 1.5f;
+                            float rendererHeight = m_collider.size.y;
+                            float bounceHeight = (rendererHeight * (1f - squashYScale)) / 2f; 
+
+                            Sequence squashSequence = DOTween.Sequence();
+                            squashSequence.Append(m_rendererTransform.DOScale(new Vector3(stretchXScale, squashYScale, 1f), 0.1f).SetEase(Ease.OutQuad))
+                                .Join(m_rendererTransform.DOLocalMoveY(-bounceHeight, 0.1f).SetEase(Ease.OutQuad)) // Changed to negative
+                                .Append(m_rendererTransform.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutElastic))
+                                .Join(m_rendererTransform.DOLocalMoveY(0, 0.2f).SetEase(Ease.OutElastic));
+                        }
+                        else
+                        {
+                             CameraController.Instance.Shake(0.2f, 0.5f);
+                        }
+
+                        m_rendererTransform.rotation = Quaternion.identity;
 
                         if (m_wantsRight || m_wantsLeft)
                         {
