@@ -5,13 +5,18 @@ using UnityEngine.Serialization;
 
 public class Enemy : MonoBehaviour
 {
+    [Header("Movement")]
     public float m_moveSpeed = (0.05f * 60.0f);
     public float m_changeSpeed = 0.2f * 60.0f;
     public float m_moveDuration = 3.0f;
     public float m_holdDuration = 0.5f;
     public float m_chargeCooldownDuration = 2.0f;
     public float m_chargeMinRange = 1.0f;
+    
+    [Header("Combat")]
     public float m_maxHealth = 4.0f;
+    public Vector2 m_knockbackForce = new Vector2(0.1f, 0.5f);
+    public GameObject m_enemyDieFallPrefab; // Prefab for the dying enemy effect
 
     public Player m_player = null;
 
@@ -38,14 +43,12 @@ public class Enemy : MonoBehaviour
     };
     private State m_state = State.Idle;
 
-    // Start is called before the first frame update
     void Start()
     {
         m_health = m_maxHealth;
         m_rigidBody = transform.GetComponent<Rigidbody2D>();
     }
 
-    // Update is called once per frame
     void FixedUpdate()
     {
         switch (m_state)
@@ -74,8 +77,22 @@ public class Enemy : MonoBehaviour
         m_health -= damageAmount;
         if(m_health <= 0.0f)
         {
-            GameObject.Destroy(gameObject);
+            Die();
         }
+    }
+
+    private void Die()
+    {
+        if (m_enemyDieFallPrefab != null)
+        {
+            GameObject dieFallInstance = Instantiate(m_enemyDieFallPrefab, transform.position, Quaternion.identity);
+            EnemyDieFall dieFallScript = dieFallInstance.GetComponent<EnemyDieFall>();
+            if (dieFallScript != null)
+            {
+                dieFallScript.Initialize(GetComponent<SpriteRenderer>().sprite, transform.position);
+            }
+        }
+        Destroy(gameObject);
     }
 
     void Idle()
@@ -85,7 +102,6 @@ public class Enemy : MonoBehaviour
         float yDiff = m_player.transform.position.y - transform.position.y;
         if(Mathf.Abs(yDiff) <= m_chargeMinRange)
         {
-            //Charge at the player!
             m_lastPlayerDiff = m_player.transform.position.x - transform.position.x;
             m_vel.x = m_changeSpeed * Mathf.Sign(m_lastPlayerDiff);
             m_timer = 0;
@@ -101,7 +117,6 @@ public class Enemy : MonoBehaviour
 
             if(m_wallFlags == WallCollision.None)
             {
-                //Randomly choose.
                 m_vel.x = (Random.Range(0.0f, 100.0f) < 50.0f) ? m_moveSpeed : -m_moveSpeed;
             }
             else
@@ -119,7 +134,6 @@ public class Enemy : MonoBehaviour
         float yDiff = m_player.transform.position.y - transform.position.y;
         if (Mathf.Abs(yDiff) <= m_chargeMinRange)
         {
-            //Charge at the player!
             m_lastPlayerDiff = m_player.transform.position.x - transform.position.x;
             m_vel.x = m_changeSpeed * Mathf.Sign(m_lastPlayerDiff);
             m_timer = 0;
@@ -130,7 +144,6 @@ public class Enemy : MonoBehaviour
         m_timer += Time.deltaTime;
         if (m_timer >= m_moveDuration)
         {
-            //No longer on the ground, fall.
             m_timer = 0.0f;
             m_state = State.Idle;
             return;
@@ -139,13 +152,11 @@ public class Enemy : MonoBehaviour
 
     void Charging()
     {
-        //Charge towards player until you pass it's x position.
         ApplyVelocity();
 
         float xDiff = m_player.transform.position.x - transform.position.x;
         if (Mathf.Sign(m_lastPlayerDiff) != Mathf.Sign(xDiff))
         {
-            //Charge at the player!
             m_vel.x = 0.0f;
             m_timer = 0;
             m_state = State.ChargingCooldown;
@@ -158,7 +169,6 @@ public class Enemy : MonoBehaviour
         m_timer += Time.deltaTime;
         if (m_timer >= m_chargeCooldownDuration)
         {
-            //No longer on the ground, fall.
             m_timer = 0.0f;
             m_state = State.Idle;
             return;
@@ -175,16 +185,31 @@ public class Enemy : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        ProcessCollision(collision);
-    }
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            Player player = collision.gameObject.GetComponent<Player>();
+            ContactPoint2D[] contacts = new ContactPoint2D[1];
+            collision.GetContacts(contacts);
+            ContactPoint2D contact = contacts[0];
 
-    private void OnCollisionStay2D(Collision2D collision)
-    {
-        ProcessCollision(collision);
-    }
-
-    private void OnCollisionExit2D(Collision2D collision)
-    {
+            // Check if player is on top
+            if (contact.normal.y < -0.5f) 
+            {
+                Die();
+                // Give player a small bounce
+                player.Bounce(new Vector2(player.GetVelocity().x, 5f));
+            }
+            else // Player hit from side or bottom
+            {
+                float knockbackDirectionX = (player.transform.position.x > transform.position.x) ? 1 : -1;
+                Vector2 finalKnockback = new Vector2(knockbackDirectionX * m_knockbackForce.x, m_knockbackForce.y);
+                player.TakeDamage(finalKnockback);
+            }
+        }
+        else
+        {
+            ProcessCollision(collision);
+        }
     }
 
     private void ProcessCollision(Collision2D collision)
@@ -193,7 +218,6 @@ public class Enemy : MonoBehaviour
 
         foreach (ContactPoint2D contact in collision.contacts)
         {
-            //Push back out
             Vector2 impulse = contact.normal * (contact.normalImpulse / Time.fixedDeltaTime);
             pos.x += impulse.x;
             pos.y += impulse.y;
@@ -203,9 +227,7 @@ public class Enemy : MonoBehaviour
                 if ((contact.normal.x > 0 && m_vel.x < 0) || (contact.normal.x < 0 && m_vel.x > 0))
                 {
                     m_vel.x = 0;
-                    //Stop us.
                     m_wallFlags = (contact.normal.x < 0) ? WallCollision.Left : WallCollision.Right;
-
                     m_state = State.Idle;
                     m_timer = 0;
                 }

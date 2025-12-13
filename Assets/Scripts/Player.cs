@@ -45,9 +45,6 @@ public class Player : MonoSingleton<Player>
     private float m_targetRotationAngle = 90.0f;
     private float m_playerSize = 0.5f;
 
-    private Transform m_cameraTransform;
-    private Vector3 m_originalCameraPos;
-
     private enum State
     {
         Idle = 0,
@@ -71,12 +68,6 @@ public class Player : MonoSingleton<Player>
         else
         {
             m_playerRender = m_rendererTransform.GetComponent<PlayerRender>();
-        }
-
-        if (Camera.main != null)
-        {
-            m_cameraTransform = Camera.main.transform;
-            m_originalCameraPos = m_cameraTransform.localPosition;
         }
     }
 
@@ -147,19 +138,12 @@ public class Player : MonoSingleton<Player>
         }
     }
 
-    // New method for bouncing without damage effects
     public void Bounce(Vector2 bounceForce)
     {
         m_vel = bounceForce;
-        m_state = State.Falling; // Or Jumping, but Falling works for air movement
+        m_state = State.Falling; 
         m_isMoving = false;
         m_rigidBody.isKinematic = false;
-        
-        // No hit flash effect here
-        if (m_playerRender != null)
-        {
-            StartCoroutine(m_playerRender.ApplyBounceEffectRoutine(0.5f));
-        }
     }
 
     void Idle()
@@ -251,7 +235,6 @@ public class Player : MonoSingleton<Player>
 
     void Walking()
     {
-        // 1. Handle ongoing movement
         if (m_isMoving)
         {
             m_moveTimer += Time.fixedDeltaTime;
@@ -294,9 +277,8 @@ public class Player : MonoSingleton<Player>
                 m_rigidBody.isKinematic = false;
                 m_rigidBody.velocity = Vector2.zero;
 
-                StartCoroutine(CameraShakeRoutine(0.1f, 0.15f));
+                CameraController.Instance.Shake(0.1f, 0.15f);
 
-                // Check for ground immediately after movement finishes
                 Vector2 origin = transform.position;
                 Vector2 size = new Vector2(m_playerSize * 0.9f, 0.05f); 
                 float distance = m_playerSize * 0.6f; 
@@ -321,7 +303,6 @@ public class Player : MonoSingleton<Player>
             }
         }
 
-        // 2. Check for Jump (Priority over walking)
         if (m_jumpPressed || m_jumpHeld)
         {
             m_stateTimer = 0;
@@ -332,7 +313,6 @@ public class Player : MonoSingleton<Player>
             return;
         }
 
-        // 3. Check for Ground (Fall if no ground)
         if (!m_isMoving && m_groundObjects.Count == 0)
         {
             m_state = State.Falling;
@@ -341,7 +321,6 @@ public class Player : MonoSingleton<Player>
             return;
         }
 
-        // 4. Start new movement
         if (m_wantsLeft || m_wantsRight)
         {
             m_playerSize = m_collider != null ? m_collider.size.x * transform.localScale.x : 0.5f;
@@ -433,14 +412,9 @@ public class Player : MonoSingleton<Player>
         if (m_isMoving) return;
 
         m_groundObjects.Remove(collision.gameObject);
-        Vector3 pos = m_rigidBody.transform.position;
-
+        
         foreach (ContactPoint2D contact in collision.contacts)
         {
-            Vector2 impulse = contact.normal * (contact.normalImpulse / Time.fixedDeltaTime);
-            pos.x += impulse.x;
-            pos.y += impulse.y;
-
             if (Mathf.Abs(contact.normal.y) > Mathf.Abs(contact.normal.x))
             {
                 if (contact.normal.y > 0)
@@ -453,7 +427,7 @@ public class Player : MonoSingleton<Player>
                     {
                         m_rendererTransform.rotation = Quaternion.identity;
 
-                        StartCoroutine(CameraShakeRoutine(0.2f, 0.5f));
+                        CameraController.Instance.Shake(0.2f, 0.5f);
 
                         if (m_wantsRight || m_wantsLeft)
                         {
@@ -479,23 +453,5 @@ public class Player : MonoSingleton<Player>
                 }
             }
         }
-    }
-
-    private IEnumerator CameraShakeRoutine(float duration, float magnitude)
-    {
-        if (m_cameraTransform == null) yield break;
-
-        float elapsed = 0.0f;
-
-        while (elapsed < duration)
-        {
-            float yOffset = Random.Range(-1f, 1f) * magnitude;
-            m_cameraTransform.localPosition = m_originalCameraPos + new Vector3(0, yOffset, 0);
-
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        m_cameraTransform.localPosition = m_originalCameraPos;
     }
 }
