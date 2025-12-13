@@ -26,7 +26,7 @@ public class Enemy : MonoBehaviour
 
     private Rigidbody2D m_rigidBody = null;
     private UnitRenderer m_unitRenderer = null;
-    private SpriteRenderer m_spriteRenderer = null; // Re-added SpriteRenderer reference
+    private SpriteRenderer m_spriteRenderer = null; 
     private float m_health = 3.0f;
     private float m_timer = 0.0f;
     private float m_lastPlayerDiff = 0.0f;
@@ -58,7 +58,7 @@ public class Enemy : MonoBehaviour
         m_health = m_maxHealth;
         m_rigidBody = transform.GetComponent<Rigidbody2D>();
         m_unitRenderer = GetComponentInChildren<UnitRenderer>();
-        m_spriteRenderer = GetComponentInChildren<SpriteRenderer>(); // Initialize SpriteRenderer
+        m_spriteRenderer = GetComponentInChildren<SpriteRenderer>(); 
         m_originalScale = transform.localScale;
     }
 
@@ -114,6 +114,11 @@ public class Enemy : MonoBehaviour
         m_state = State.Stunned;
         m_vel = Vector2.zero;
         
+        if (m_unitRenderer != null)
+        {
+            m_unitRenderer.StartInvincibilityFlash();
+        }
+        
         transform.DOKill();
         
         float squashYScale = 0.5f;
@@ -128,6 +133,11 @@ public class Enemy : MonoBehaviour
         
         yield return new WaitForSeconds(2.0f);
         
+        if (m_unitRenderer != null)
+        {
+            m_unitRenderer.StopInvincibilityFlash();
+        }
+        
         // Jump back to normal
         transform.DOScale(m_originalScale, 0.2f).SetEase(Ease.OutBack);
         transform.DOJump(originalPosition, 0.5f, 1, 0.2f).OnComplete(() => {
@@ -140,11 +150,12 @@ public class Enemy : MonoBehaviour
     {
         if (m_enemyDieFallPrefab != null)
         {
+            bool isPlayerLeft = m_player.transform.position.x < transform.position.x;
             GameObject dieFallInstance = Instantiate(m_enemyDieFallPrefab, transform.position, Quaternion.identity);
             EnemyDieFall dieFallScript = dieFallInstance.GetComponent<EnemyDieFall>();
             if (dieFallScript != null)
             {
-                dieFallScript.Initialize(m_spriteRenderer.sprite, transform.position);
+                dieFallScript.Initialize(m_spriteRenderer.sprite, transform.position, isPlayerLeft);
             }
         }
         Destroy(gameObject);
@@ -283,7 +294,6 @@ public class Enemy : MonoBehaviour
         {
             if (player != null)
             {
-                // Knockback direction is opposite to the side player hit from
                 float knockbackDirectionX = (player.transform.position.x > transform.position.x) ? 1 : -1;
                 Vector2 finalKnockback = new Vector2(knockbackDirectionX * m_knockbackForce.x, m_knockbackForce.y);
                 player.TakeDamage(finalKnockback);

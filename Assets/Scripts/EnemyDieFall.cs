@@ -6,12 +6,13 @@ using DG.Tweening;
 public class EnemyDieFall : MonoBehaviour
 {
     [SerializeField] private float m_jumpForce = 10f;
+    [SerializeField] private float m_horizontalForce = 5f; // Added horizontal force
     [SerializeField] private float m_gravity = 30f;
     [SerializeField] private float m_rotationSpeed = 360f;
 
     private Vector3 m_velocity;
 
-    public void Initialize(Sprite sprite, Vector3 startPosition)
+    public void Initialize(Sprite sprite, Vector3 startPosition, bool isPlayerLeft)
     {
         transform.position = startPosition;
         
@@ -22,23 +23,25 @@ public class EnemyDieFall : MonoBehaviour
         }
         sr.sprite = sprite;
         
-        // Flatten the sprite slightly to look squashed
         transform.localScale = new Vector3(1.2f, 0.5f, 1f);
 
-        m_velocity = new Vector3(0, m_jumpForce, 0);
+        // Set velocity based on player position
+        float directionX = isPlayerLeft ? 1f : -1f;
+        m_velocity = new Vector3(directionX * m_horizontalForce, m_jumpForce, 0);
         
-        // Add rotation for effect
-        transform.DORotate(new Vector3(0, 0, 180), 0.5f).SetLoops(-1, LoopType.Incremental);
+        // Rotate in the direction of movement
+        float rotationDirection = isPlayerLeft ? -1f : 1f;
+        transform.DORotate(new Vector3(0, 0, 360 * rotationDirection), 0.5f, RotateMode.FastBeyond360)
+            .SetLoops(-1, LoopType.Incremental)
+            .SetEase(Ease.Linear);
     }
 
     void Update()
     {
-        // Apply gravity
         m_velocity.y -= m_gravity * Time.deltaTime;
         transform.position += m_velocity * Time.deltaTime;
 
-        // Destroy if it falls below the screen (assuming -10 is safe)
-        if (transform.position.y < -10f)
+        if (transform.position.y < -100f)
         {
             Destroy(gameObject);
         }

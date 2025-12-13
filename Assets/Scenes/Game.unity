@@ -645,7 +645,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 21300000, guid: bc0f15b23c932f14097fc71ebbd78334, type: 3}
-  m_Color: {r: 0, g: 1, b: 0, a: 1}
+  m_Color: {r: 1, g: 0.12717617, b: 0, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -871,6 +871,7 @@ MonoBehaviour:
   m_airMoveFriction: 0.85
   m_groundPoundSpeed: 2
   m_groundPoundPrepareTime: 0.5
+  m_invincibilityDuration: 2
 --- !u!61 &679829337
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -2268,27 +2269,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 2307204018820327804, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
-        type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 21300000, guid: b0ee56cdbdb3a1948a2b73fe0673742a,
-        type: 3}
-    - target: {fileID: 2307204018820327804, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
-        type: 3}
-      propertyPath: m_Color.b
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2307204018820327804, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
-        type: 3}
-      propertyPath: m_Color.g
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2307204018820327804, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
-        type: 3}
-      propertyPath: m_Color.r
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 3056939827975374884, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -2346,15 +2326,9 @@ PrefabInstance:
       objectReference: {fileID: 679829336}
     - target: {fileID: 5731647566619654462, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
         type: 3}
-      propertyPath: m_playerBounceForce
-      value: 1
+      propertyPath: m_maxHealth
+      value: 3
       objectReference: {fileID: 0}
-    - target: {fileID: 5731647566619654462, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
-        type: 3}
-      propertyPath: m_enemyDieFallPrefab
-      value: 
-      objectReference: {fileID: 3231488207119627387, guid: 0c538640d68c0f6418fd803ba61d96ef,
-        type: 3}
     - target: {fileID: 5833926104942020969, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
         type: 3}
       propertyPath: m_Name
@@ -2363,37 +2337,8 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7351251094286964297, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 7888539616644481132}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d7ca94c67ce8f2b4a92b3290706b8e3b, type: 3}
---- !u!1 &7888539616644481131 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7351251094286964297, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
-    type: 3}
-  m_PrefabInstance: {fileID: 7888539616644481130}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &7888539616644481132
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7888539616644481131}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 87ec62c8c97769045af9a82adf691c24, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _sprite: {fileID: 7888539616644481133}
---- !u!212 &7888539616644481133 stripped
-SpriteRenderer:
-  m_CorrespondingSourceObject: {fileID: 4173948699314647360, guid: d7ca94c67ce8f2b4a92b3290706b8e3b,
-    type: 3}
-  m_PrefabInstance: {fileID: 7888539616644481130}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

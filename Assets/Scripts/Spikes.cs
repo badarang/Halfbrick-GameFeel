@@ -59,7 +59,7 @@ public class Spikes : MonoBehaviour {
                 player.TakeDamage(finalKnockback);
 
                 // Visual feedback on the spike itself
-                m_sprite.color = Color.red;
+                m_sprite.color = Color.white;
                 StartCoroutine(ResetColorRoutine());
             }
             
