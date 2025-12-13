@@ -25,6 +25,7 @@ public class Player : MonoSingleton<Player>
     private Rigidbody2D m_rigidBody = null;
     private BoxCollider2D m_collider = null; 
     private UnitRenderer m_unitRenderer = null; 
+    private Weapon m_weapon = null; // Reference to the Weapon component
 
     private bool m_jumpPressed = false;
     private bool m_jumpHeld = false;
@@ -52,7 +53,6 @@ public class Player : MonoSingleton<Player>
     private float m_playerSize = 0.5f;
     private bool isFacingRight = true;
     
-    // Flag to remember ground pound state for one frame after collision
     private bool m_wasGroundPounding = false;
 
     private enum State
@@ -71,6 +71,7 @@ public class Player : MonoSingleton<Player>
     {
         m_rigidBody = transform.GetComponent<Rigidbody2D>();
         m_collider = transform.GetComponent<BoxCollider2D>(); 
+        m_weapon = GetComponentInChildren<Weapon>(true); // Get weapon reference
 
         if (m_rendererTransform == null)
         {
@@ -92,14 +93,14 @@ public class Player : MonoSingleton<Player>
             GameObject projectileGO = ObjectPooler.Instance.GetObject("Bullet");
             if (projectileGO)
             {
-                projectileGO.GetComponent<Bullet>().Fire(transform.position, m_fireRight);
+                Vector3 firePos = (m_weapon != null) ? m_weapon.GetFirePosition() : transform.position;
+                projectileGO.GetComponent<Bullet>().Fire(firePos, m_fireRight);
             }
         }
     }
 
     void FixedUpdate()
     {
-        // Reset the flag at the beginning of physics update
         m_wasGroundPounding = (m_state == State.GroundPoundFall);
 
         switch (m_state)
@@ -141,9 +142,18 @@ public class Player : MonoSingleton<Player>
         return m_state == State.GroundPoundFall || m_wasGroundPounding;
     }
 
+    public bool IsFacingRight()
+    {
+        return isFacingRight;
+    }
+
     public void GiveWeapon()
     {
         m_hasWeapon = true;
+        if (m_weapon != null)
+        {
+            m_weapon.gameObject.SetActive(true);
+        }
     }
 
     public Vector2 GetVelocity()
