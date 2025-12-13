@@ -26,12 +26,14 @@ public class Enemy : MonoBehaviour
 
     private Rigidbody2D m_rigidBody = null;
     private UnitRenderer m_unitRenderer = null;
+    private SpriteRenderer m_spriteRenderer = null; // Re-added SpriteRenderer reference
     private float m_health = 3.0f;
     private float m_timer = 0.0f;
     private float m_lastPlayerDiff = 0.0f;
     private Vector2 m_vel = new Vector2(0, 0);
     private Vector3 m_originalScale;
     private bool m_isStunned = false;
+    private Coroutine m_damageCoroutine;
 
     private enum WallCollision
     {
@@ -56,6 +58,7 @@ public class Enemy : MonoBehaviour
         m_health = m_maxHealth;
         m_rigidBody = transform.GetComponent<Rigidbody2D>();
         m_unitRenderer = GetComponentInChildren<UnitRenderer>();
+        m_spriteRenderer = GetComponentInChildren<SpriteRenderer>(); // Initialize SpriteRenderer
         m_originalScale = transform.localScale;
     }
 
@@ -115,18 +118,22 @@ public class Enemy : MonoBehaviour
         
         float squashYScale = 0.5f;
         float stretchXScale = 1.5f;
-        
-        // Squash
+        float originalHeight = m_spriteRenderer.bounds.size.y / m_originalScale.y;
+        float bounceHeight = (originalHeight * (1f - squashYScale)) / 2f;
+        Vector3 originalPosition = transform.position;
+
+        // Squash down from bottom pivot
         transform.DOScale(new Vector3(stretchXScale, squashYScale, 1f), 0.1f);
+        transform.DOMoveY(originalPosition.y - bounceHeight, 0.1f);
         
         yield return new WaitForSeconds(2.0f);
         
         // Jump back to normal
         transform.DOScale(m_originalScale, 0.2f).SetEase(Ease.OutBack);
-        transform.DOJump(transform.position, 0.5f, 1, 0.2f);
-
-        m_isStunned = false;
-        m_state = State.Idle;
+        transform.DOJump(originalPosition, 0.5f, 1, 0.2f).OnComplete(() => {
+            m_isStunned = false;
+            m_state = State.Idle;
+        });
     }
 
     private void Die()
@@ -137,7 +144,7 @@ public class Enemy : MonoBehaviour
             EnemyDieFall dieFallScript = dieFallInstance.GetComponent<EnemyDieFall>();
             if (dieFallScript != null)
             {
-                dieFallScript.Initialize(GetComponent<SpriteRenderer>().sprite, transform.position);
+                dieFallScript.Initialize(m_spriteRenderer.sprite, transform.position);
             }
         }
         Destroy(gameObject);
@@ -240,26 +247,48 @@ public class Enemy : MonoBehaviour
             collision.GetContacts(contacts);
             ContactPoint2D contact = contacts[0];
 
-            // Check if player is on top
             if (contact.normal.y < -0.5f) 
             {
-                // Check if player is ground pounding
                 float damage = player.IsGroundPounding() ? m_groundPoundDamage : m_stompDamage;
                 InflictDamage(damage);
-                
-                // Bounce player
                 player.Bounce(new Vector2(player.GetVelocity().x, m_playerBounceForce));
             }
-            else // Player hit from side or bottom
+            else 
             {
-                float knockbackDirectionX = (player.transform.position.x > transform.position.x) ? 1 : -1;
-                Vector2 finalKnockback = new Vector2(knockbackDirectionX * m_knockbackForce.x, m_knockbackForce.y);
-                player.TakeDamage(finalKnockback);
+                if (m_damageCoroutine != null) StopCoroutine(m_damageCoroutine);
+                m_damageCoroutine = StartCoroutine(DamagePlayerRoutine(player));
             }
         }
         else
         {
             ProcessCollision(collision);
+        }
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            if (m_damageCoroutine != null)
+            {
+                StopCoroutine(m_damageCoroutine);
+                m_damageCoroutine = null;
+            }
+        }
+    }
+
+    private IEnumerator DamagePlayerRoutine(Player player)
+    {
+        while (true)
+        {
+            if (player != null)
+            {
+                // Knockback direction is opposite to the side player hit from
+                float knockbackDirectionX = (player.transform.position.x > transform.position.x) ? 1 : -1;
+                Vector2 finalKnockback = new Vector2(knockbackDirectionX * m_knockbackForce.x, m_knockbackForce.y);
+                player.TakeDamage(finalKnockback);
+            }
+            yield return new WaitForSeconds(0.1f);
         }
     }
 

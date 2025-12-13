@@ -20,6 +20,7 @@ public class Player : MonoSingleton<Player>
     public float m_airMoveFriction = 0.85f;
     public float m_groundPoundSpeed = 20.0f;
     public float m_groundPoundPrepareTime = 0.5f; // Duration of the spin
+    public float m_invincibilityDuration = 2.0f;
     
     private Rigidbody2D m_rigidBody = null;
     private BoxCollider2D m_collider = null; 
@@ -33,6 +34,7 @@ public class Player : MonoSingleton<Player>
     private bool m_groundPoundPressed = false;
     private bool m_fireRight = true;
     private bool m_hasWeapon = false;
+    private bool m_isInvincible = false;
     private float m_stateTimer = 0.0f;
     private Vector2 m_vel = new Vector2(0, 0);
     private List<GameObject> m_groundObjects = new List<GameObject>();
@@ -145,18 +147,38 @@ public class Player : MonoSingleton<Player>
 
     public void TakeDamage(Vector2 knockbackForce)
     {
+        if (m_isInvincible) return;
+
         m_vel = knockbackForce;
         m_state = State.Falling;
         m_isMoving = false;
         m_rigidBody.isKinematic = false;
         
-        // Cancel any tweens if interrupted
         m_rendererTransform.DOKill();
         
         if (m_unitRenderer != null)
         {
             StartCoroutine(m_unitRenderer.ApplyHitFlashEffectRoutine(0.5f));
         }
+        
+        StartCoroutine(InvincibilityRoutine());
+    }
+
+    private IEnumerator InvincibilityRoutine()
+    {
+        m_isInvincible = true;
+        if (m_unitRenderer != null)
+        {
+            m_unitRenderer.StartInvincibilityFlash();
+        }
+        
+        yield return new WaitForSeconds(m_invincibilityDuration);
+        
+        if (m_unitRenderer != null)
+        {
+            m_unitRenderer.StopInvincibilityFlash();
+        }
+        m_isInvincible = false;
     }
 
     public void Bounce(Vector2 bounceForce)
@@ -166,7 +188,6 @@ public class Player : MonoSingleton<Player>
         m_isMoving = false;
         m_rigidBody.isKinematic = false;
         
-        // Cancel any tweens if interrupted
         m_rendererTransform.DOKill();
     }
 

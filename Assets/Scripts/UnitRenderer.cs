@@ -5,6 +5,7 @@ using UnityEngine;
 public class UnitRenderer : MonoBehaviour
 {
     [SerializeField] private SpriteRenderer _sprite;
+    private Coroutine _invincibilityCoroutine;
 
     public IEnumerator ApplyHitFlashEffectRoutine(float _fullDuration)
     {
@@ -64,6 +65,36 @@ public class UnitRenderer : MonoBehaviour
         if (_sprite.material != null && _sprite.material.HasProperty("_HitEffectBlend"))
         {
             _sprite.material.SetFloat("_HitEffectBlend", 0f);
+        }
+    }
+
+    public void StartInvincibilityFlash()
+    {
+        if (_invincibilityCoroutine != null)
+        {
+            StopCoroutine(_invincibilityCoroutine);
+        }
+        _invincibilityCoroutine = StartCoroutine(InvincibilityFlashRoutine());
+    }
+
+    public void StopInvincibilityFlash()
+    {
+        if (_invincibilityCoroutine != null)
+        {
+            StopCoroutine(_invincibilityCoroutine);
+        }
+        _sprite.color = new Color(_sprite.color.r, _sprite.color.g, _sprite.color.b, 1f);
+    }
+
+    private IEnumerator InvincibilityFlashRoutine()
+    {
+        float flashInterval = 0.1f;
+        while (true)
+        {
+            _sprite.color = new Color(_sprite.color.r, _sprite.color.g, _sprite.color.b, 0.1f);
+            yield return new WaitForSeconds(flashInterval);
+            _sprite.color = new Color(_sprite.color.r, _sprite.color.g, _sprite.color.b, 1f);
+            yield return new WaitForSeconds(flashInterval);
         }
     }
 
