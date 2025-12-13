@@ -49,26 +49,30 @@ public class Spikes : MonoBehaviour {
 
     private IEnumerator DamageRoutine(Player player)
     {
-        while (true)
+        while (player != null && player.gameObject.activeInHierarchy)
         {
-            if (player != null)
-            {
-                float directionX = (m_knockbackDirection == KnockbackDirection.Right) ? 1f : -1f;
-                Vector2 finalKnockback = new Vector2(directionX * m_knockbackForce.x, m_knockbackForce.y);
-                
-                if (player.TakeDamage(finalKnockback))
-                {
-                    QuestManager.Instance.CompleteQuest("touch_spikes");
-                    
-                    CameraController.Instance.Shake(0.2f, 0.5f);
-                    
-                    m_sprite.color = Color.red;
-                    yield return StartCoroutine(HitStopRoutine());
-                    m_sprite.color = m_defaultColor;
-                }
-            }
+            float directionX = (m_knockbackDirection == KnockbackDirection.Right) ? 1f : -1f;
+            Vector2 finalKnockback = new Vector2(directionX * m_knockbackForce.x, m_knockbackForce.y);
             
-            yield return new WaitForSeconds(0.1f);
+            if (player.TakeDamage(finalKnockback))
+            {
+                QuestManager.Instance.CompleteQuest("touch_spikes");
+                
+                CameraController.Instance.Shake(0.2f, 0.5f);
+                
+                m_sprite.color = Color.red;
+                yield return StartCoroutine(HitStopRoutine());
+                m_sprite.color = m_defaultColor;
+
+                // Wait for the player's invincibility to wear off before dealing damage again
+                yield return new WaitForSeconds(player.m_invincibilityDuration);
+            }
+            else
+            {
+                // If TakeDamage returns false, it means the player is invincible.
+                // Wait a short moment before trying again.
+                yield return new WaitForSeconds(0.1f);
+            }
         }
     }
 
