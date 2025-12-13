@@ -51,6 +51,9 @@ public class Player : MonoSingleton<Player>
     private float m_targetRotationAngle = 90.0f;
     private float m_playerSize = 0.5f;
     private bool isFacingRight = true;
+    
+    // Flag to remember ground pound state for one frame after collision
+    private bool m_wasGroundPounding = false;
 
     private enum State
     {
@@ -96,6 +99,9 @@ public class Player : MonoSingleton<Player>
 
     void FixedUpdate()
     {
+        // Reset the flag at the beginning of physics update
+        m_wasGroundPounding = (m_state == State.GroundPoundFall);
+
         switch (m_state)
         {
             case State.Idle:
@@ -132,7 +138,7 @@ public class Player : MonoSingleton<Player>
 
     public bool IsGroundPounding()
     {
-        return m_state == State.GroundPoundFall;
+        return m_state == State.GroundPoundFall || m_wasGroundPounding;
     }
 
     public void GiveWeapon()
