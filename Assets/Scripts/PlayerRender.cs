@@ -32,6 +32,13 @@ public class PlayerRender : MonoBehaviour
             _sprite.color = new Color(1, 1, 1, 1);
             yield return waitSec2;
         }
+
+        // Reset to original state
+        _sprite.color = Color.white;
+        if (_sprite.material != null && _sprite.material.HasProperty("_HitEffectBlend"))
+        {
+            _sprite.material.SetFloat("_HitEffectBlend", 0f);
+        }
     }
 
     private void ApplyFlashColor(Color color)

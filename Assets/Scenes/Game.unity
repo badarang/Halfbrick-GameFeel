@@ -682,7 +682,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ff25625a312a0f4ebd2da300351ca5e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_knockbackForce: {x: 0.1, y: 0.5}
+  m_knockbackForce: {x: 1, y: 0.5}
 --- !u!1 &640908271
 GameObject:
   m_ObjectHideFlags: 0
@@ -841,7 +841,7 @@ GameObject:
   - component: {fileID: 679829340}
   m_Layer: 6
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -858,7 +858,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 421757bffb6900d428ba4cecbd6d71fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_rendererTransform: {fileID: 679829339}
+  m_rendererTransform: {fileID: 773470831}
   m_moveAccel: 7
   m_groundFriction: 0.85
   m_gravity: -3
@@ -975,7 +975,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 914a0809386234e4d801bb2f5d6a16b3, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1018,6 +1018,7 @@ GameObject:
   - component: {fileID: 773470831}
   - component: {fileID: 773470832}
   - component: {fileID: 773470833}
+  - component: {fileID: 773470834}
   m_Layer: 6
   m_Name: Renderer
   m_TagString: Untagged
@@ -1108,6 +1109,19 @@ MonoBehaviour:
   normalStrength: 5
   normalSmoothing: 1
   computingNormal: 0
+--- !u!114 &773470834
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 773470830}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2fe36244d79184a7884cabe8108657f9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _sprite: {fileID: 773470832}
 --- !u!1 &791041580
 GameObject:
   m_ObjectHideFlags: 0

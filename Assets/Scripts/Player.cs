@@ -141,10 +141,7 @@ public class Player : MonoSingleton<Player>
         m_isMoving = false;
         m_rigidBody.isKinematic = false;
         
-        if (m_playerRender != null)
-        {
-            StartCoroutine(m_playerRender.ApplyHitFlashEffectRoutine(0.5f));
-        }
+        StartCoroutine(m_playerRender.ApplyHitFlashEffectRoutine(0.5f));
     }
 
     void Idle()
@@ -418,14 +415,11 @@ public class Player : MonoSingleton<Player>
         if (m_isMoving) return;
 
         m_groundObjects.Remove(collision.gameObject);
-        Vector3 pos = m_rigidBody.transform.position;
-
+        
+        // Removed manual position adjustment logic to let Physics engine handle contact resolution
+        
         foreach (ContactPoint2D contact in collision.contacts)
         {
-            Vector2 impulse = contact.normal * (contact.normalImpulse / Time.fixedDeltaTime);
-            pos.x += impulse.x;
-            pos.y += impulse.y;
-
             if (Mathf.Abs(contact.normal.y) > Mathf.Abs(contact.normal.x))
             {
                 if (contact.normal.y > 0)
@@ -464,7 +458,6 @@ public class Player : MonoSingleton<Player>
                 }
             }
         }
-        m_rigidBody.transform.position = pos;
     }
 
     private IEnumerator CameraShakeRoutine(float duration, float magnitude)
