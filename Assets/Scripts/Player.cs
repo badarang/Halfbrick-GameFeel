@@ -105,7 +105,6 @@ public class Player : MonoSingleton<Player>
             {
                 Vector3 firePos = (m_weapon != null) ? m_weapon.GetFirePosition() : transform.position;
                 projectileGO.GetComponent<Bullet>().Fire(firePos, m_fireRight);
-                QuestManager.Instance.CompleteQuest("shoot_enemy");
             }
 
             // Apply Recoil & Effects
@@ -287,16 +286,17 @@ public class Player : MonoSingleton<Player>
     
     private bool IsGrounded()
     {
-        for (int i = m_groundObjects.Count - 1; i >= 0; i--)
-        {
-            if (m_groundObjects[i] == null || !m_groundObjects[i].activeInHierarchy)
-            {
-                m_groundObjects.RemoveAt(i);
-                continue;
-            }
-            return true;
-        }
-        return false;
+        if (m_collider == null) return false;
+
+        float rayLength = 0.1f;
+        // Raycast from bottom-left
+        RaycastHit2D hit1 = Physics2D.Raycast(new Vector2(m_collider.bounds.min.x, m_collider.bounds.min.y), Vector2.down, rayLength, m_obstacleLayerMask);
+        // Raycast from bottom-right
+        RaycastHit2D hit2 = Physics2D.Raycast(new Vector2(m_collider.bounds.max.x, m_collider.bounds.min.y), Vector2.down, rayLength, m_obstacleLayerMask);
+        // Raycast from bottom-center
+        RaycastHit2D hit3 = Physics2D.Raycast(new Vector2(m_collider.bounds.center.x, m_collider.bounds.min.y), Vector2.down, rayLength, m_obstacleLayerMask);
+
+        return hit1.collider != null || hit2.collider != null || hit3.collider != null;
     }
 
     void Falling()
@@ -549,10 +549,8 @@ public class Player : MonoSingleton<Player>
 
     void ApplyVelocity()
     {
-        Vector3 pos = m_rigidBody.transform.position;
-        pos.x += m_vel.x;
-        pos.y += m_vel.y;
-        m_rigidBody.transform.position = pos;
+        Vector2 newPos = m_rigidBody.position + m_vel;
+        m_rigidBody.MovePosition(newPos);
     }
 
     void UpdateInput()

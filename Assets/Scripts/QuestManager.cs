@@ -19,11 +19,10 @@ public class QuestItem
 public class QuestManager : MonoSingleton<QuestManager>
 {
     [Header("UI References")]
-    [SerializeField] private TextMeshProUGUI m_questTitleText;
+    [SerializeField] private TextMeshProUGUI m_questTitleText; // Title for the quest list
     [SerializeField] private Transform m_questListContent; // Parent for UI items
     [SerializeField] private GameObject m_questItemPrefab; // Prefab for a single quest UI item
     [SerializeField] private GameObject m_completionPanel;
-    [SerializeField] private TextMeshProUGUI m_completionText;
     [SerializeField] private ParticleSystem m_confettiEffect;
 
     [Header("Quests")]
@@ -31,6 +30,7 @@ public class QuestManager : MonoSingleton<QuestManager>
 
     private List<QuestUIItem> m_questUIItems = new List<QuestUIItem>();
     private bool m_allQuestsCompleted = false;
+    private int m_currentQuestIndex = 0;
 
     void Start()
     {
@@ -40,13 +40,13 @@ public class QuestManager : MonoSingleton<QuestManager>
         }
         
         CreateQuestUI();
-        UpdateQuestUI();
+        UpdateQuestTitle();
         m_completionPanel.SetActive(false);
     }
 
     void Update()
     {
-        if (m_allQuestsCompleted && Input.GetKeyDown(KeyCode.R))
+        if (Input.GetKeyDown(KeyCode.R))
         {
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
@@ -54,35 +54,36 @@ public class QuestManager : MonoSingleton<QuestManager>
 
     private void InitializeDefaultQuests()
     {
-        m_quests.Add(new QuestItem { id = "touch_spikes", description = "1. 가시에 닿기" });
-        m_quests.Add(new QuestItem { id = "hit_by_enemy", description = "2. 적에게 맞기" });
-        m_quests.Add(new QuestItem { id = "use_pressure_pad", description = "3. 압력 패드 익숙해지기", targetAmount = 3 });
-        m_quests.Add(new QuestItem { id = "shoot_enemy", description = "4-1. 총 쏘기", isSubQuest = true });
-        m_quests.Add(new QuestItem { id = "stomp_enemy", description = "4-2. 적 밟기", isSubQuest = true });
-        m_quests.Add(new QuestItem { id = "ground_pound_enemy", description = "4-3. z 키를 눌러서 적 밟기", isSubQuest = true });
+        m_quests.Add(new QuestItem { id = "touch_spikes", description = "1. Touch the spikes", targetAmount = 2 });
+        m_quests.Add(new QuestItem { id = "hit_by_enemy", description = "2. Get hit by an enemy" });
+        m_quests.Add(new QuestItem { id = "use_pressure_pad", description = "3. Get used to the pressure pad", targetAmount = 3 });
+        m_quests.Add(new QuestItem { id = "shoot_enemy", description = "4. Kill an enemy: Shoot", isSubQuest = true });
+        m_quests.Add(new QuestItem { id = "stomp_enemy", description = "5. Kill an enemy: Stomp", isSubQuest = true });
+        m_quests.Add(new QuestItem { id = "ground_pound_enemy", description = "6. Kill an enemy: Ground Pound (Press Z)", isSubQuest = true });
     }
 
     private void CreateQuestUI()
     {
-        // Header for section 4
-        if (m_questItemPrefab != null)
+        // Clear existing UI
+        foreach (Transform child in m_questListContent)
         {
-            GameObject headerGO = new GameObject("QuestHeader");
-            headerGO.transform.SetParent(m_questListContent, false);
-            TextMeshProUGUI headerText = headerGO.AddComponent<TextMeshProUGUI>();
-            headerText.text = "4. 적을 죽이는 3가지 방법";
-            headerText.fontSize = 14; // Example size
-            headerText.color = Color.black;
-            headerText.fontStyle = FontStyles.Bold;
+            Destroy(child.gameObject);
         }
+        m_questUIItems.Clear();
 
-        foreach (var quest in m_quests)
+        // Show only the current quest
+        if (m_currentQuestIndex < m_quests.Count)
         {
-            GameObject itemGO = Instantiate(m_questItemPrefab, m_questListContent);
-            QuestUIItem uiItem = itemGO.GetComponent<QuestUIItem>();
-            uiItem.Setup(quest);
-            m_questUIItems.Add(uiItem);
+            ShowQuest(m_quests[m_currentQuestIndex]);
         }
+    }
+
+    private void ShowQuest(QuestItem quest)
+    {
+        GameObject itemGO = Instantiate(m_questItemPrefab, m_questListContent);
+        QuestUIItem uiItem = itemGO.GetComponent<QuestUIItem>();
+        uiItem.Setup(quest);
+        m_questUIItems.Add(uiItem);
     }
 
     public void CompleteQuest(string questId)
@@ -92,40 +93,59 @@ public class QuestManager : MonoSingleton<QuestManager>
 
     public void AddQuestProgress(string questId, int amount = 1)
     {
-        if (m_allQuestsCompleted) return;
+        if (m_allQuestsCompleted || m_currentQuestIndex >= m_quests.Count) return;
 
-        QuestItem quest = m_quests.Find(q => q.id == questId);
-        if (quest != null && !quest.isCompleted)
+        // Check if the progress is for the current quest
+        QuestItem currentQuest = m_quests[m_currentQuestIndex];
+        if (currentQuest.id != questId || currentQuest.isCompleted)
         {
-            quest.currentAmount += amount;
-            if (quest.currentAmount >= quest.targetAmount)
+            return;
+        }
+
+        currentQuest.currentAmount += amount;
+        UpdateQuestUI(); 
+
+        if (currentQuest.currentAmount >= currentQuest.targetAmount)
+        {
+            currentQuest.currentAmount = currentQuest.targetAmount;
+            currentQuest.isCompleted = true;
+            
+            UpdateQuestUI(); 
+
+            m_currentQuestIndex++;
+            UpdateQuestTitle();
+
+            if (m_currentQuestIndex < m_quests.Count)
             {
-                quest.currentAmount = quest.targetAmount;
-                quest.isCompleted = true;
+                ShowQuest(m_quests[m_currentQuestIndex]);
+            }
+            else
+            {
                 CheckForAllQuestsCompleted();
             }
-            UpdateQuestUI();
         }
     }
 
     private void UpdateQuestUI()
     {
-        for (int i = 0; i < m_quests.Count; i++)
+        foreach (var uiItem in m_questUIItems)
         {
-            if (i < m_questUIItems.Count)
-            {
-                m_questUIItems[i].UpdateUI(m_quests[i]);
-            }
+            uiItem.UpdateUI();
+        }
+    }
+
+    private void UpdateQuestTitle()
+    {
+        if (m_questTitleText != null)
+        {
+            int displayIndex = m_allQuestsCompleted ? m_quests.Count : m_currentQuestIndex;
+            int totalQuests = m_quests.Count;
+            m_questTitleText.text = $"How to Forge a Square Agent ({displayIndex}/{totalQuests})";
         }
     }
 
     private void CheckForAllQuestsCompleted()
     {
-        foreach (var quest in m_quests)
-        {
-            if (!quest.isCompleted) return;
-        }
-
         m_allQuestsCompleted = true;
         StartCoroutine(AllQuestsCompletedRoutine());
     }
@@ -133,14 +153,11 @@ public class QuestManager : MonoSingleton<QuestManager>
     private IEnumerator AllQuestsCompletedRoutine()
     {
         m_completionPanel.SetActive(true);
-        m_completionText.text = "Congrats!";
         if (m_confettiEffect != null)
         {
+            m_confettiEffect.gameObject.SetActive(true);
             m_confettiEffect.Play();
         }
-
-        yield return new WaitForSeconds(3.0f);
-
-        m_completionText.text = "Still Enough?\nPress R to Retry!";
+        yield break;
     }
 }

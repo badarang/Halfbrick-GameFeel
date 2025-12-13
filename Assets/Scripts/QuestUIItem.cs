@@ -10,8 +10,11 @@ public class QuestUIItem : MonoBehaviour
     [SerializeField] private TextMeshProUGUI m_progressText;
     [SerializeField] private GameObject m_checkMark; // Replaced completedLine with checkMark
 
+    public QuestItem Quest { get; private set; }
+
     public void Setup(QuestItem quest)
     {
+        Quest = quest;
         m_descriptionText.text = quest.description;
         
         // Indentation for sub-quests
@@ -20,32 +23,36 @@ public class QuestUIItem : MonoBehaviour
             m_descriptionText.margin = new Vector4(20, 0, 0, 0);
         }
 
-        UpdateUI(quest);
+        UpdateUI();
     }
 
-    public void UpdateUI(QuestItem quest)
+    public void UpdateUI()
     {
-        if (quest.isCompleted)
+        if (Quest == null) return;
+
+        if (Quest.isCompleted)
         {
             m_checkMark.SetActive(true);
-            m_progressText.text = "(완료!)";
-            m_descriptionText.color = Color.gray;
-            m_descriptionText.fontStyle = FontStyles.Strikethrough; // Apply strikethrough
+            m_descriptionText.fontStyle = FontStyles.Strikethrough;
         }
         else
         {
             m_checkMark.SetActive(false);
-            m_descriptionText.color = Color.black;
-            m_descriptionText.fontStyle = FontStyles.Normal; // Remove strikethrough
-            
-            if (quest.targetAmount > 1)
-            {
-                m_progressText.text = $"({quest.currentAmount}/{quest.targetAmount})";
-            }
-            else
-            {
-                m_progressText.text = "";
-            }
+            m_descriptionText.fontStyle = FontStyles.Normal;
+        }
+
+        if (Quest.targetAmount > 0)
+        {
+            m_progressText.text = $"({Quest.currentAmount}/{Quest.targetAmount})";
+        }
+        else
+        {
+            m_progressText.text = "";
+        }
+        
+        if (m_progressText.transform.parent != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(m_progressText.transform.parent.GetComponent<RectTransform>());
         }
     }
 }

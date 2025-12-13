@@ -4,6 +4,13 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using DG.Tweening;
 
+public enum DamageType
+{
+    Shoot,
+    Stomp,
+    GroundPound
+}
+
 public class Enemy : MonoBehaviour
 {
     [Header("Movement")]
@@ -21,6 +28,9 @@ public class Enemy : MonoBehaviour
     public float m_stompDamage = 1.0f;
     public float m_groundPoundDamage = 3.0f;
     public GameObject m_enemyDieFallPrefab; 
+
+    [Header("Collision")]
+    public LayerMask m_obstacleLayerMask;
 
     public Player m_player = null;
     private EnemySpawner m_spawner;
@@ -70,6 +80,15 @@ public class Enemy : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (m_player == null)
+        {
+            m_player = Player.Instance;
+            if (m_player == null)
+            {
+                return; 
+            }
+        }
+
         if (m_isStunned) return;
 
         switch (m_state)
@@ -93,7 +112,7 @@ public class Enemy : MonoBehaviour
         m_wallFlags = WallCollision.None;
     }
 
-    public void InflictDamage(float damageAmount)
+    public void InflictDamage(float damageAmount, DamageType damageType)
     {
         if (m_isStunned) return;
 
@@ -106,7 +125,7 @@ public class Enemy : MonoBehaviour
 
         if(m_health <= 0.0f)
         {
-            Die();
+            Die(damageType);
         }
         else
         {
@@ -152,8 +171,21 @@ public class Enemy : MonoBehaviour
         });
     }
 
-    private void Die()
+    private void Die(DamageType damageType)
     {
+        switch (damageType)
+        {
+            case DamageType.Shoot:
+                QuestManager.Instance.CompleteQuest("shoot_enemy");
+                break;
+            case DamageType.Stomp:
+                QuestManager.Instance.CompleteQuest("stomp_enemy");
+                break;
+            case DamageType.GroundPound:
+                QuestManager.Instance.CompleteQuest("ground_pound_enemy");
+                break;
+        }
+
         if (m_spawner != null)
         {
             m_spawner.OnEnemyDied();
@@ -273,13 +305,11 @@ public class Enemy : MonoBehaviour
             {
                 if (player.IsGroundPounding())
                 {
-                    QuestManager.Instance.CompleteQuest("ground_pound_enemy");
-                    InflictDamage(m_groundPoundDamage);
+                    InflictDamage(m_groundPoundDamage, DamageType.GroundPound);
                 }
                 else
                 {
-                    QuestManager.Instance.CompleteQuest("stomp_enemy");
-                    InflictDamage(m_stompDamage);
+                    InflictDamage(m_stompDamage, DamageType.Stomp);
                 }
                 player.Bounce(new Vector2(player.GetVelocity().x, m_playerBounceForce));
             }
@@ -289,9 +319,9 @@ public class Enemy : MonoBehaviour
                 m_damageCoroutine = StartCoroutine(DamagePlayerRoutine(player));
             }
         }
-        else
+        else if ((m_obstacleLayerMask.value & (1 << collision.gameObject.layer)) > 0)
         {
-            ProcessCollision(collision);
+            // ProcessCollision(collision); // This line is now removed
         }
     }
 
@@ -326,25 +356,7 @@ public class Enemy : MonoBehaviour
 
     private void ProcessCollision(Collision2D collision)
     {
-        Vector3 pos = m_rigidBody.transform.position;
-
-        foreach (ContactPoint2D contact in collision.contacts)
-        {
-            Vector2 impulse = contact.normal * (contact.normalImpulse / Time.fixedDeltaTime);
-            pos.x += impulse.x;
-            pos.y += impulse.y;
-
-            if (Mathf.Abs(contact.normal.y) < Mathf.Abs(contact.normal.x))
-            {
-                if ((contact.normal.x > 0 && m_vel.x < 0) || (contact.normal.x < 0 && m_vel.x > 0))
-                {
-                    m_vel.x = 0;
-                    m_wallFlags = (contact.normal.x < 0) ? WallCollision.Left : WallCollision.Right;
-                    m_state = State.Idle;
-                    m_timer = 0;
-                }
-            }
-        }
-        m_rigidBody.transform.position = pos;
+        // This method is now empty to prevent manual position manipulation.
+        // The Rigidbody2D will handle collisions with obstacles naturally.
     }
 }

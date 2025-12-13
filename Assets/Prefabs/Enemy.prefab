@@ -132,6 +132,9 @@ MonoBehaviour:
   m_groundPoundDamage: 3
   m_enemyDieFallPrefab: {fileID: 3231488207119627387, guid: 0c538640d68c0f6418fd803ba61d96ef,
     type: 3}
+  m_obstacleLayerMask:
+    serializedVersion: 2
+    m_Bits: 1015
   m_player: {fileID: 0}
 --- !u!1 &7351251094286964297
 GameObject:

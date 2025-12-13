@@ -51,7 +51,7 @@ public class Bullet : MonoBehaviour
             if(enemyObject)
             {
                 //Do damage
-                enemyObject.InflictDamage(m_hitDamage);
+                enemyObject.InflictDamage(m_hitDamage, DamageType.Shoot);
             }
 
             foreach (ContactPoint2D contact in collision.contacts)
